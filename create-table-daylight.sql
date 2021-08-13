@@ -1,0 +1,5 @@
+CREATE TABLE daylight (
+		month TINYINT,
+		day TINYINT,
+		light DECIMAL(6,4))
+	ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t';
