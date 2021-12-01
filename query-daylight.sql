@@ -128,7 +128,8 @@ SELECT month, day,
 -- how much more or less light was there today compared to the same day last month?
 SELECT month, day,
 		(light - LAG(light, 1) OVER(PARTITION BY day ORDER BY month)) * 60 AS daylight_diff_mins
-	FROM daylight;
+	FROM daylight
+	ORDER BY month, day;
 
 -- for the 11th day of each month
 SELECT * FROM (
