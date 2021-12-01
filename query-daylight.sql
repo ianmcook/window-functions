@@ -92,7 +92,19 @@ SELECT month, day, light,
 	WHERE month = 6;
 -- this demonstrates the ordering part of a window specification 
 
--- use it in a subquery
+-- in the above example, try changing light to round(light, 3) to create ties
+-- in the rank column
+-- then use DENSE_RANK() instead of RANK() and observe the difference
+
+-- try using CUME_DIST() which returns the cumulative distribution of a value,
+-- in other words the proportion of values in the partition that is less than
+-- or equal to the value in the current row
+
+-- try using PERCENT_RANK() which is similar to CUME_DIST();
+-- it returns the proportion of values in the partition that are smaller than
+-- the value in the current row, excluding the highest value
+
+-- use the above in a subquery to directly answer the question
 SELECT * FROM (
 		SELECT month, day, light,
 			RANK() OVER(PARTITION BY month ORDER BY light DESC) AS rank
