@@ -95,7 +95,7 @@ SELECT month, day, light,
 
 -- try some other window functions besides RANK()
 
--- in the above example, try changing light to round(light, 3) to create ties
+-- in the above example, try changing light to round(light * 60) to create ties
 -- in the rank column
 
 -- then try using DENSE_RANK() instead of RANK() and observe the difference:
