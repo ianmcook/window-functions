@@ -130,9 +130,20 @@ SELECT * FROM (
 SELECT month, day, light, 
 		LAG(light, 1) OVER(ORDER BY month, day) AS light_yesterday
 	FROM daylight;
+-- this demonstrates the offset function LAG()
 
--- try using LEAD() instead of LAG() to find the hours of light tomorrow
+-- try some other offset functions besides LAG()
+
+-- try using LEAD() to find the hours of light tomorrow
+
 -- try changing the offset to something other than 1
+
+-- try using the third argument to LEAD() or LAG() to specify a default value,
+-- used when the lead or lag extends past the end of the window (default is NULL)
+
+-- try using FIRST_VALUE() and LAST_VALUE() which return the first and last
+-- values of the specified column in the window, and NTH_VALUE() which generalizes
+-- this to the nth value in the window
 
 -- calculate difference from yesterday in minutes
 SELECT month, day,
