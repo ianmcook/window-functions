@@ -218,3 +218,14 @@ SELECT month, days,
 SELECT month, days, 
 		SUM(days) OVER(ORDER BY days RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS cumulative_months
 	FROM (SELECT month, COUNT(day) AS days FROM daylight GROUP BY month) AS day_counts ORDER BY days, month;
+
+-- some query engines implement even more windowing techniques, including:
+--   WINDOW clause (named windows)
+--   GROUPS frame type
+--   EXCLUDE clause
+--   FILTER clause
+--   window chaining (defining one window in terms of another)
+
+-- for more information about these, see:
+--   https://duckdb.org/docs/sql/window_functions
+--   https://www.sqlite.org/windowfunctions.html
