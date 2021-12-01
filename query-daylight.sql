@@ -90,21 +90,35 @@ SELECT month, day, light,
 		RANK() OVER(PARTITION BY month ORDER BY light DESC) AS rank
 	FROM daylight
 	WHERE month = 6;
--- this demonstrates the ordering part of a window specification 
+-- this demonstrates the ordering part of a window specification
+-- and demonstrates the window function RANK()
+
+-- try some other window functions besides RANK()
 
 -- in the above example, try changing light to round(light, 3) to create ties
 -- in the rank column
--- then use DENSE_RANK() instead of RANK() and observe the difference
 
--- try using CUME_DIST() which returns the cumulative distribution of a value,
--- in other words the proportion of values in the partition that is less than
--- or equal to the value in the current row
+-- then try using DENSE_RANK() instead of RANK() and observe the difference:
+-- RANK() skips values after ties whereas DENSE_RANK() returns consecutive values
 
--- try using PERCENT_RANK() which is similar to CUME_DIST();
--- it returns the proportion of values in the partition that are smaller than
--- the value in the current row, excluding the highest value
+-- also try ROW_NUMBER() which is similar to RANK() but numbers all rows
+-- sequentially in the case of ties (the numbering is arbitrary within ties)
 
--- use the above in a subquery to directly answer the question
+-- try using PERCENT_RANK() which returns the proportion of values in the partition
+-- that are smaller than the value in the current row, excluding the highest value
+
+-- try using CUME_DIST() which is similar to PERCENT_RANK(); it returns the
+-- cumulative distribution of a value, in other words the proportion of values in
+-- the partition that is less than or equal to the value in the current row
+
+-- try using `NTILE()` which returns the n-tile (n-quantile) within the window that the
+-- current value is in; this places the values as evenly as possible into n divisions
+-- for example: quartile (n=4), quintile (n=5), decile (n=10), percentile (n=100)
+-- use this to answer questions like:
+-- which days in June are in the fourth quartile of days with the most daylight?
+
+-- now use the above in a subquery to directly answer the question posed above
+-- (what is the day in June with the second most daylight?)
 SELECT * FROM (
 		SELECT month, day, light,
 			RANK() OVER(PARTITION BY month ORDER BY light DESC) AS rank
