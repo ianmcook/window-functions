@@ -137,21 +137,24 @@ SELECT * FROM (
 		FROM daylight) x
 	WHERE day = 11;
 
--- weekly moving average
+-- what's the weekly moving average hours of light?
 SELECT month, day, light, 
 		AVG(light) OVER(ORDER BY month, day ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS weekly_moving_avg
-	FROM daylight;
+	FROM daylight
+	ORDER BY month, day;
 -- this demonstrates the frame boundaries part of a window specification 
 
--- annual cumulative daylight
+-- what's the annual cumulative hours of daylight each day?
 SELECT month, day, light, 
 		SUM(light) OVER(ORDER BY month, day ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_daylight
-	FROM daylight;
+	FROM daylight
+	ORDER BY month, day;
 
--- monthly cumulative daylight
+-- what's the monthly cumulative hours of daylight each day?
 SELECT month, day, light, 
 		SUM(light) OVER(PARTITION BY month ORDER BY day ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_daylight
-	FROM daylight;
+	FROM daylight
+	ORDER BY month, day;
 
 -- difference between ROWS and RANGE:
 -- ROWS limits rows within a partition by specifying a fixed number of rows preceding and/or following the current row
@@ -180,12 +183,12 @@ SELECT month, days,
 -- order the data by days instead of month
 SELECT month, COUNT(day) AS days FROM daylight GROUP BY month ORDER BY days, month;
 
--- how many days in this month and all other months with the same number of days or fewer?
+-- how many days in this month and all other months that have the same number of days or fewer?
 SELECT month, days, 
 		SUM(days) OVER(ORDER BY days RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_months
 	FROM (SELECT month, COUNT(day) AS days FROM daylight GROUP BY month) AS day_counts ORDER BY days, month;
 
--- how many days in this month and all other months with the same number of days or more?
+-- how many days in this month and all other months that have the same number of days or more?
 SELECT month, days, 
 		SUM(days) OVER(ORDER BY days RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS cumulative_months
 	FROM (SELECT month, COUNT(day) AS days FROM daylight GROUP BY month) AS day_counts ORDER BY days, month;
