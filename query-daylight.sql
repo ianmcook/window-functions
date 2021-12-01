@@ -117,6 +117,9 @@ SELECT month, day, light,
 		LAG(light, 1) OVER(ORDER BY month, day) AS light_yesterday
 	FROM daylight;
 
+-- try using LEAD() instead of LAG() to find the hours of light tomorrow
+-- try changing the offset to something other than 1
+
 -- calculate difference from yesterday in minutes
 SELECT month, day,
 		(light - LAG(light, 1) OVER(ORDER BY month, day)) * 60 AS daylight_diff_mins
