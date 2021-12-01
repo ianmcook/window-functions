@@ -132,7 +132,7 @@ and demonstrates the window function `RANK()`
 
 try some other window functions besides `RANK()`
 
-in the above example, try changing `light` to `round(light, 3)` to create ties
+in the above example, try changing `light` to `round(light * 60)` to create ties
 in the `rank` column
 
 then try using `DENSE_RANK()` instead of `RANK()` and observe the difference:
@@ -244,7 +244,7 @@ need to use data with ties to demonstrate the difference between `ROWS` and `RAN
 SELECT month, COUNT(day) AS days FROM daylight GROUP BY month ORDER BY month;
 ```
 
--- first demonstrate `ROWS`
+first demonstrate `ROWS`
 
 how many days in this month and all preceding months in the year?
 ```{sql, connection=con}
