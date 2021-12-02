@@ -1,2 +1,2 @@
-# sql-window-functions
-SQL Window (Analytic) Functions Tutorial
+# window-functions@r
+R Window (Analytic) Functions Tutorial
