@@ -1,2 +1,2 @@
-# sql-window-functions
+# window-functions@sql
 SQL Window (Analytic) Functions Tutorial
