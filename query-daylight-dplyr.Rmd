@@ -1,0 +1,327 @@
+---
+title: "SQL Window Functions"
+author:
+  - name: Jonathan Keane
+    email: \email{jkeane@gmail.com}
+output:
+  html_document
+---
+
+```{r, echo=FALSE, message=FALSE, results='hide'}
+library(dplyr)
+daylight <- read.table("daylight.tsv", sep = "\t", col.names = c("month", "day", "light"))
+```
+
+See the data
+```{r}
+print(daylight)
+```
+
+how many hours of daylight on a particular day (for example December 1)?
+```{r}
+daylight %>%
+  filter(month == 12, day == 1)
+```
+
+A visualization of this data:
+![2017 Daily Sunrise and Sunset at Raleigh-Durham International Airport, North Carolina, United States](https://cloud.githubusercontent.com/assets/280509/23589002/dab71d0a-0193-11e7-8e91-33688ba060fd.png)
+
+standard aggregation example: max daylight for each month 
+```{r}
+daylight %>%
+  group_by(month) %>% 
+  summarise(max(light)) %>% 
+  arrange(month)
+```
+groups sets of rows together into single rows
+individual row values are not included in the output
+
+which day in each month does the max occur on?
+
+simple window function example: max daylight for each month
+```{r}
+daylight %>% 
+  group_by(month) %>% 
+  mutate(month_max = max(light)) %>% 
+  arrange(month, day)
+```
+window functions (aka analytic functions) are applied over sets of rows without combining them
+individual row values can be included in the output
+
+return only the row for the day with the max daylight in each month
+
+doesn't work; window expressions not allowed in WHERE clause
+```{sql, connection=con, eval=FALSE}
+SELECT month, day, light
+  FROM daylight
+ 	WHERE light = MAX(light) OVER(PARTITION BY month);
+```
+
+workaround: put it in the SELECT list
+```{r}
+daylight %>% 
+  group_by(month) %>% 
+  mutate(is_maxx = max(light) == light) %>%
+  arrange(month, day)
+```
+
+doesn't work; can't use column created with window function in WHERE clause 
+```{sql, connection=con, eval=FALSE}
+SELECT month, day, light,
+ 		light = MAX(light) OVER(PARTITION BY month) AS is_max
+ 	FROM daylight
+ 	WHERE is_max
+ 	ORDER BY month;
+```
+
+workaround: use a subquery
+```{r}
+daylight %>% 
+  group_by(month) %>% 
+  # note, we don't need to mutate(is_maxx) %>% filter(is_maxx) and could do the
+  # filter directly: filter(max(light) == light)
+  mutate(is_maxx = max(light) == light) %>%
+  filter(is_maxx) %>% 
+  arrange(month)
+```
+this demonstrates the partitioning part of a window specification
+
+instead of finding the max for each month, find the max for the whole year
+```{r}
+daylight %>% 
+  mutate(is_max = light == max(light)) %>%
+  arrange(month, day)
+```
+empty OVER() expression makes one partition from whole dataset
+
+use a subquery to get the day with the most daylight
+```{r}
+daylight %>% 
+  mutate(is_max = light == max(light)) %>%
+  filter(is_max)
+```
+
+same but with MIN instead of MAX
+```{r}
+daylight %>% 
+  mutate(is_min = light == min(light)) %>%
+  filter(is_min)
+```
+
+difference between daylight each day vs. day with least daylight
+```{r}
+daylight %>% 
+  mutate(diff = light - min(light)) 
+```
+
+what is the day in June with the second most daylight?
+```{r}
+daylight %>% 
+  group_by(month) %>% 
+  mutate(rank = min_rank(desc(light))) %>% 
+  filter(month == 6) %>%
+  arrange(rank)
+```
+this demonstrates the ordering part of a window specification
+and demonstrates the window function `RANK()`
+
+try some other window functions besides `RANK()`
+
+in the above example, try changing `light` to `round(light * 60)` to create ties
+in the `rank` column
+
+then try using `DENSE_RANK()` instead of `RANK()` and observe the difference:
+`RANK()` skips values after ties whereas `DENSE_RANK()` returns consecutive values
+
+also try `ROW_NUMBER()` which is similar to `RANK()` but numbers all rows
+sequentially in the case of ties (the numbering is arbitrary within ties)
+
+try using `PERCENT_RANK()` which returns the proportion of values in the partition
+that are smaller than the value in the current row, excluding the highest value
+
+try using `CUME_DIST()` which is similar to `PERCENT_RANK()`; it returns the
+cumulative distribution of a value, in other words the proportion of values in
+the partition that is less than or equal to the value in the current row
+
+try using `NTILE()` which returns the n-tile (n-quantile) within the window that the
+current value is in; this places the values as evenly as possible into n divisions
+for example: quartile (n=4), quintile (n=5), decile (n=10), percentile (n=100)
+use this to answer questions like:
+which days in June are in the fourth quartile of days with the most daylight?
+
+now use the above in a subquery to directly answer the question posed above
+(what is the day in June with the second most daylight?)
+```{r}
+daylight %>% 
+  group_by(month) %>% 
+  mutate(rank = min_rank(desc(light))) %>% 
+  filter(month == 6, rank == 2)
+```
+
+how much more or less light was there today compared to yesterday?
+```{r}
+daylight %>% 
+  arrange(month, day) %>% 
+  mutate(light_yesterday = lag(light, 1)) 
+```
+this demonstrates the offset function `LAG()`
+
+try some other offset functions besides `LAG()`
+
+try using `LEAD()` to find the hours of light _tomorrow_
+
+try changing the offset to something other than 1
+
+try using the third argument to `LEAD()` or `LAG()` to specify a default value,
+used when the lead or lag extends past the end of the window (default is NULL)
+
+try using `FIRST_VALUE()` and `LAST_VALUE()` which return the first and last
+values of the specified column in the window, and `NTH_VALUE()` which generalizes
+this to the nth value in the window
+
+calculate difference from yesterday in minutes
+```{r}
+daylight %>% 
+  arrange(month, day) %>% 
+  mutate(daylight_diff_mins = (light - lag(light, 1)) * 60) 
+```
+
+how much more or less light was there today compared to the same day last month?
+```{r}
+daylight %>% 
+  group_by(day) %>% 
+  arrange(month) %>% 
+  mutate(daylight_diff_mins = (light - lag(light, 1)) * 60) %>%
+  arrange(month, day)
+```
+
+for the 1st day of each month
+```{r}
+daylight %>% 
+  group_by(day) %>% 
+  arrange(month) %>% 
+  mutate(daylight_diff_mins = (light - lag(light, 1)) * 60) %>%
+  arrange(month, day) %>% 
+  filter(day == 1)
+```
+
+what's the weekly moving average hours of light?
+```{r}
+library(slider)
+
+daylight %>% 
+  arrange(month, day) %>% 
+  mutate(weekly_moving_avg = slider::slide_dbl(light, mean, na.rm = TRUE, .before = 6)) %>%
+  arrange(month, day)
+```
+this demonstrates the frame boundaries part of a window specification 
+
+what's the annual cumulative hours of daylight each day
+```{r}
+daylight %>% 
+  arrange(month, day) %>% 
+  mutate(cumulative_daylight = cumsum(light)) %>%
+  arrange(month, day)
+```
+
+what's the monthly cumulative hours of daylight each day?
+```{r}
+daylight %>% 
+  group_by(month) %>%
+  arrange(day) %>% 
+  mutate(cumulative_daylight = cumsum(light)) %>%
+  arrange(month, day)
+```
+
+difference between `ROWS` and `RANGE`:
+`ROWS` limits rows within a partition by specifying a fixed number of rows preceding and/or following the current row
+`RANGE` limits rows within a partition by specifying a range of values with respect to the value in the current row
+Preceding and following rows are defined based on the ordering specified with `ORDER BY`
+
+need to use data with ties to demonstrate the difference between `ROWS` and `RANGE`
+```{r}
+daylight %>% 
+  group_by(month) %>%
+  summarise(days = n() )%>% 
+  arrange(month)
+```
+
+first demonstrate `ROWS`
+
+how many days in this month and all preceding months in the year?
+```{r}
+daylight %>% 
+  group_by(month) %>%
+  summarise(days = n()) %>% 
+  mutate(days_in_this_and_preceding_months = cumsum(days)) %>%
+  arrange(month)
+```
+this is a cumulative sum from top to bottom
+
+how many days in this month and all following months in the year?
+```{r}
+daylight %>% 
+  group_by(month) %>%
+  summarise(days = n()) %>% 
+  arrange(desc(month)) %>% 
+  mutate(days_in_this_and_preceding_months = cumsum(days)) %>%
+  arrange(month)
+```
+this is a cumulative sum from bottom to top
+
+now demonstrate `RANGE`
+
+order the data by days instead of month
+```{r}
+daylight %>% 
+  group_by(month) %>%
+  summarise(days = n()) %>%
+  arrange(days, month)
+```
+
+how many days in this month and all other months that have the same number of days or fewer?
+```{r}
+daylight %>% 
+  group_by(month) %>%
+  summarise(days = n()) %>%
+  arrange(days, month) %>%
+  group_by(days) %>% 
+  mutate(all_days = sum(days)) %>% 
+  ungroup() %>% 
+  nest_by(days, all_days) %>% 
+  ungroup() %>% 
+  mutate(cumulative_months = cumsum(all_days)) %>% 
+  tidyr::unnest() %>% 
+  select(month, days, cumulative_months)
+```
+
+how many days in this month and all other months that have the same number of days or more?
+```{r}
+daylight %>% 
+  group_by(month) %>%
+  summarise(days = n()) %>%
+  arrange(days, month) %>%
+  group_by(days) %>% 
+  mutate(all_days = sum(days)) %>% 
+  ungroup() %>% 
+  nest_by(days, all_days) %>% 
+  ungroup() %>% 
+  arrange(desc(all_days)) %>%
+  mutate(cumulative_months = cumsum(all_days)) %>% 
+  tidyr::unnest() %>% 
+  select(month, days, cumulative_months) %>% 
+  arrange(days)
+```
+
+some query engines implement even more windowing techniques, including:
+
+* `WINDOW` clause (named windows)
+* `GROUPS` frame type
+* `EXCLUDE` clause
+* `FILTER` clause
+* window chaining (defining one window in terms of another)
+
+for more information about these, see:
+
+* https://duckdb.org/docs/sql/window_functions
+* https://www.sqlite.org/windowfunctions.html
